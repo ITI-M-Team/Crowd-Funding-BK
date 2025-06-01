@@ -248,3 +248,50 @@ def project_detail_template(request, pk):
         'project': project,
         'similar_projects': similar_projects
     })
+
+# View for adding/updating and retrieving extra user info
+class ExtraInfoView(views.APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        extra_info, _ = ExtraInfo.objects.get_or_create(user=request.user)
+        serializer = ExtraInfoSerializer(extra_info)
+        return Response(serializer.data)
+
+    def post(self, request):
+        extra_info, _ = ExtraInfo.objects.get_or_create(user=request.user)
+        serializer = ExtraInfoSerializer(extra_info, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+      
+# View for deleting the user account after confirming password
+class DeleteUserView(views.APIView):
+    permission_classes = [IsAuthenticated]  
+
+    def post(self, request):
+        password = request.data.get('password')
+        if not password:
+            return Response({'error': 'Password is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = request.user
+        if not user.check_password(password):
+            return Response({'error': 'Incorrect password.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.delete()
+        return Response({'message': 'Account deleted successfully.'}, status=status.HTTP_200_OK)
+
+
+#Allows authenticated users to update 
+class UpdateUserProfileView(views.APIView):
+    permission_classes = [IsAuthenticated]
+    def patch(self, request):
+        serializer = UpdateUserProfileSerializer(
+            request.user, data=request.data, partial=True, context={'request': request}
+        )
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'message': 'Profile updated successfully.'})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
