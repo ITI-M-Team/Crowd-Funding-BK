@@ -170,3 +170,12 @@ class Rating(models.Model):
     def __str__(self):
         return f"{self.user.email} rated {self.project.title} {self.score}"
     
+       
+class ExtraInfo(models.Model):
+        user = models.OneToOneField(User, on_delete=models.CASCADE)  # One-to-One relationship
+        birthdate = models.DateField(null=True, blank=True)
+        facebook_account = models.URLField(max_length=255, null=True, blank=True)
+        country = models.CharField(max_length=100, null=True, blank=True)
+
+        def __str__(self):
+            return f"Extra info for {self.user.email}"
