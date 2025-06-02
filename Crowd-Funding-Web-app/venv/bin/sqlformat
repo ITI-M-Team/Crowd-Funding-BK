@@ -1,6 +1,4 @@
-#!/bin/sh
-'''exec' "/media/hossam-hassan/Data/ITI/FrameWork/Django/Project/Team-Project/githup main project/Crowd-Funding-Web-app/venv/bin/python3" "$0" "$@"
-' '''
+#!/home/ahmed-abd-elkader/django-project/project/BE/Crowd-Funding-BK/Crowd-Funding-Web-app/venv/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys

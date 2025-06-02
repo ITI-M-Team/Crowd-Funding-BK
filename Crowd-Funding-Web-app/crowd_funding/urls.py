@@ -24,6 +24,9 @@ urlpatterns = [
     path('donations/', DonationCreateView.as_view(), name='donation-create'),
     path('projects/<int:pk>/cancel/', CancelProjectView.as_view(), name='cancel-project'),
     path('projects/<int:pk>/template/', project_detail_template, name='project-detail-template'),
+    path('extra-info/', ExtraInfoView.as_view(), name='extra-info'),
+    path('delete-account/', DeleteUserView.as_view(), name='delete-account'),
+    path('update-profile/', UpdateUserProfileView.as_view(), name='update-profile'),
 
 ]
 
