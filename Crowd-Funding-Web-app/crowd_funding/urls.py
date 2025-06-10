@@ -28,5 +28,10 @@ urlpatterns = [
     path('delete-account/', DeleteUserView.as_view(), name='delete-account'),
     path('update-profile/', UpdateUserProfileView.as_view(), name='update-profile'),
 
+
 ]
+
+
+
+ 
 

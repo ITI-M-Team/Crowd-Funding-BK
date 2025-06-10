@@ -69,8 +69,7 @@ class PasswordReset(models.Model):
 class Category(models.Model):
     id=models.AutoField(primary_key=True)
     name=models.CharField(max_length=30)
-    created_at = models.DateTimeField(auto_now_add=True) 
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)  #
+
 
 
 
@@ -169,6 +168,7 @@ class Rating(models.Model):
 
     def __str__(self):
         return f"{self.user.email} rated {self.project.title} {self.score}"
+    
     
        
 class ExtraInfo(models.Model):

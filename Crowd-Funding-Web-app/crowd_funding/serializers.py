@@ -1,8 +1,11 @@
+from requests import Response
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.backends import ModelBackend
+
+import project
 from .models import *
 import re
 
@@ -103,43 +106,55 @@ class ProjectImagesSerializer(serializers.ModelSerializer):
 ## project serializer
 
 class ProjectSerializer(serializers.ModelSerializer):
-    category = CategorySerializer()
-    tags = TagSerializer(many=True,)
-    images = ProjectImagesSerializer(many=True, read_only=True)
-    # category_id = serializers.PrimaryKeyRelatedField(
-    #     queryset=Category.objects.all(),
-    #     source='category',
-    #     write_only=True
+    # category = serializers.SlugRelatedField(
+    #     slug_field='name',
+    #     queryset=Category.objects.all()
     # )
-    # tag_ids = serializers.PrimaryKeyRelatedField(
+    # tags = serializers.SlugRelatedField(
     #     many=True,
-    #     queryset=Tag.objects.all(),
-    #     source='tags',
-    #     write_only=True
+    #     slug_field='name',
+    #     queryset=Tag.objects.all()
     # )
-    class Meta:
-        model=Projects
-        fields=['id','title','details','totalTarget','startTime','endTime','uid','category', 'tags','images']
-        extra_kwargs = {
-            'uid': {'read_only': True}  
-        }
-    
+    category = serializers.CharField()  
+    tags = TagSerializer(many=True, read_only=True) 
+    images = ProjectImagesSerializer(many=True, read_only=True)
 
-    def create(self,validated_data):
-        ##get the incoming ctargory and tags from FR
+    class Meta:
+        model = Projects
+        fields = ['id', 'title', 'details', 'totalTarget', 'startTime', 'endTime', 'uid', 'category', 'tags', 'images']
+        extra_kwargs = {
+            'uid': {'read_only': True}
+        }
+
+    def create(self, validated_data):
+        # Extract category and tags from the validated data
         category = validated_data.pop('category')
-        tags = validated_data.pop('tags')
-        ## Use Get or create DRF BIN
-        newcategory, _ = Category.objects.get_or_create(name=category['name'])
-        ## Same as tags but it sore as list
-        newtags = []
+        # tags = validated_data.pop('tags')
+        tags=self.initial_data.getlist('tags')
+        category_obj, _ = Category.objects.get_or_create(name=category)
+        # Create the project instance
+        
+
+        # Get or create each tag (handle SlugRelatedField 'name')
+        new_tags = []
         for tag in tags:
-            newtag,_=Tag.objects.get_or_create(name=tag['name'])
-            newtags.append(newtag)
-        project=Projects.objects.create(category=newcategory,**validated_data)
-        project.tags.set(newtags)
+            tag_obj, _ = Tag.objects.get_or_create(name=tag)
+            new_tags.append(tag_obj)
+        
+        project = Projects.objects.create(category=category_obj, **validated_data)
+        project.tags.set(new_tags)
+        # Handle image uploads
+        request = self.context.get('request')
+        if request and hasattr(request, 'FILES'):
+            images = request.FILES.getlist('images')
+            for image in images:
+                ProjectImages.objects.create(project=project, image=image)
         return project
-    
+    ##log errors
+    def to_internal_value(self, data):
+        print("Incoming data to ProjectSerializer:", data)
+        return super().to_internal_value(data)
+        
 
     ##################################
     # Project Details
@@ -186,6 +201,20 @@ class RatingSerializer(serializers.ModelSerializer):
         fields = ['id', 'project', 'user', 'score', 'created_at']
         read_only_fields = ['user', 'created_at']
 
+    # newtags = []
+    # for tag in tags:
+    #     newtag,_=Tag.objects.get_or_create(name=tag)
+    #     newtags.append(newtag)
+    # project=Projects.objects.create(category=newcategory,**validated_data)
+    # project.tags.set(newtags)
+    def create(self, validated_data):
+        request = self.context.get('request')
+        project = validated_data.get('project')
+        images = request.FILES.getlist('images')
+        for image in images:
+            ProjectImages.objects.create(project=project, image=image) 
+        return project
+## (add Project and list all projects)
 class ExtraInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExtraInfo
