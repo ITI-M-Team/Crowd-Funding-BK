@@ -1,4 +1,3 @@
-from requests import Response
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import make_password
@@ -219,7 +218,17 @@ class ExtraInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExtraInfo
         fields = ['birthdate', 'facebook_account', 'country']
+        # exclude user so frontend doesn't have to send it
 
+    def update(self, instance, validated_data):
+        return super().update(instance, validated_data)
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    extra_info = ExtraInfoSerializer(read_only=True)
+
+    class Meta:
+        model = User
+        fields = ['id', 'first_name', 'last_name', 'email', 'mobile_phone', 'profile_picture', 'extra_info']
 class UpdateUserProfileSerializer(serializers.ModelSerializer):
     new_password = serializers.CharField(write_only=True, required=False)
     confirm_password = serializers.CharField(write_only=True, required=False)
