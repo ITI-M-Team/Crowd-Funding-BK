@@ -3,59 +3,66 @@ from rest_framework.decorators import action
 from rest_framework import generics, status, views, viewsets, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from django.core.mail import send_mail
-from django.shortcuts import render, get_object_or_404, redirect
+from django.shortcuts import render ,get_object_or_404
 from django.conf import settings
-from .models import User, EmailActivation, PasswordReset, Projects, Comment, Rating, Report, Donation, ExtraInfo
-from .serializers import (
-    UserRegistrationSerializer, UserLoginSerializer, UserProfileSerializer,
-    PasswordResetRequestSerializer, PasswordResetConfirmSerializer,
-    ProjectSerializer, ProjectImagesSerializer, CommentSerializer,
-    RatingSerializer, ReportSerializer, DonationSerializer,
-    ExtraInfoSerializer, UpdateUserProfileSerializer
-)
+from django.contrib.auth import login
+from .models import User, EmailActivation, PasswordReset, Projects, Comment, Rating, Report, Donation
+from .serializers import *
 import uuid
-
+### Try With Unautheticated
+from rest_framework.permissions import AllowAny
 # Register user and send activation email
 class UserRegistrationView(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserRegistrationSerializer
-    permission_classes = [AllowAny]
-
+    permission_classes = [AllowAny]               ###### Try as Unautheticated
     def perform_create(self, serializer):
         user = serializer.save()
         activation = EmailActivation.objects.create(user=user)
         activation_link = f"http://localhost:8000/api/activate/{activation.activation_key}/"
         print(f"Sending activation email to: {user.email}")
-        send_mail(
+        sent =send_mail(
             subject="Activate your account",
             message=f"Click the link to activate your account: {activation_link}",
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[user.email],
         )
+        print(f"Email sent successfully: {sent}")
 
 # Account activation
-class ActivateAccountView(APIView):
-    permission_classes = [AllowAny]
-
+class ActivateAccountView(views.APIView):
     def get(self, request, activation_key):
         try:
             activation = EmailActivation.objects.get(activation_key=activation_key)
             if activation.is_expired():
-                return redirect("http://localhost:5173/activation-expired")
+                return Response({"error": "Activation link expired."}, status=status.HTTP_400_BAD_REQUEST)
             activation.user.is_active = True
             activation.user.save()
             activation.delete()
-            return redirect("http://localhost:5173/activation-success")
+            return Response({"message": "Account activated successfully."})
         except EmailActivation.DoesNotExist:
-            return redirect("http://localhost:5173/invalid-activation")
+            return Response({"error": "Invalid activation key."}, status=status.HTTP_400_BAD_REQUEST)
 
 # Login
+# class UserLoginView(views.APIView):
+#     permission_classes = [AllowAny]               ###### Try as Unautheticated
+#     def post(self, request):
+#         serializer = UserLoginSerializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
+#         user = serializer.validated_data['user']
+#         token, created = Token.objects.get_or_create(user=user)
+#         return Response({
+#             "message": "Login successful.",
+#             "token": token.key,
+#             "user": UserProfileSerializer(user).data
+#         })
+
+
 class UserLoginView(APIView):
     permission_classes = [AllowAny]
-
     def post(self, request):
         serializer = UserLoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -67,10 +74,9 @@ class UserLoginView(APIView):
             "user": UserProfileSerializer(user).data
         })
 
-# Request password reset
-class PasswordResetRequestView(APIView):
-    permission_classes = [AllowAny]
 
+# Request password reset
+class PasswordResetRequestView(views.APIView):
     def post(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -87,9 +93,7 @@ class PasswordResetRequestView(APIView):
         return Response({"message": "Password reset email sent."})
 
 # Confirm password reset
-class PasswordResetConfirmView(APIView):
-    permission_classes = [AllowAny]
-
+class PasswordResetConfirmView(views.APIView):
     def post(self, request, reset_key):
         try:
             reset = PasswordReset.objects.get(reset_key=reset_key, used=False)
@@ -100,6 +104,7 @@ class PasswordResetConfirmView(APIView):
 
         serializer = PasswordResetConfirmSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
         reset.user.set_password(serializer.validated_data['new_password'])
         reset.user.save()
         reset.used = True
@@ -109,64 +114,70 @@ class PasswordResetConfirmView(APIView):
 # Get user profile
 class UserProfileView(generics.RetrieveAPIView):
     serializer_class = UserProfileSerializer
-    permission_classes = [IsAuthenticated]
 
     def get_object(self):
         return self.request.user
-
-# Logout
-class LogoutView(APIView):
+    
+###Projects viewsets\
+class ProjectView(viewsets.ModelViewSet):
+    queryset=Projects.objects.prefetch_related("tags","images").all()
+    serializer_class=ProjectSerializer
     permission_classes = [IsAuthenticated]
+    ##Pass the data to the serialziers
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+    ## list the projects in the templates
+    # def list(self,request,*args,**kwargs):
+    #     projects = self.get_queryset()
+    #     return render(request, 'projects.html', {'projects': projects})
+    def perform_create(self, serializer):
+        ##log errors
+        if not serializer.is_valid():
+            print("Serializer errors:", serializer.errors)
+        serializer.save(uid=self.request.user)
 
+    ### add image for custom project view url "add-image" 
+    @action(detail=True,methods=['POST'],url_path='add-image') 
+    def add_image(self,request,pk=None):
+        project=self.get_object()
+        serializer=ProjectImagesSerializer( data=request.data)
+        if serializer.is_valid():
+            serializer.save(project=project)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    ##Custom Update Method
+    def update(self, request, *args, **kwargs):
+        project = self.get_object()
+        serializer = self.get_serializer(project, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        ## if there is new tags in the updated data add them to itis project
+        if 'tags' in request.data:
+            project.tags.set(request.data['tags'])
+##Logout
+class LogoutView(views.APIView):
+    permission_classes = [IsAuthenticated]
     def post(self, request):
         request.user.auth_token.delete()
         return Response({"message": "Logged out successfully"}, status=status.HTTP_200_OK)
+    
+    ###################################3
+# Project Details 
 
-# Check Auth
+
 class CheckAuthView(APIView):
     def get(self, request):
         if request.user.is_authenticated:
             return Response({'is_authenticated': True, 'email': request.user.email})
         return Response({'is_authenticated': False})
 
-# Project ViewSet
-class ProjectView(viewsets.ModelViewSet):
-    queryset = Projects.objects.prefetch_related("tags", "images").all()
-    serializer_class = ProjectSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context['request'] = self.request
-        return context
-
-    def perform_create(self, serializer):
-        serializer.save(uid=self.request.user)
-
-    def update(self, request, *args, **kwargs):
-        project = self.get_object()
-        serializer = self.get_serializer(project, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-        if 'tags' in request.data:
-            project.tags.set(request.data['tags'])
-
-    @action(detail=True, methods=['POST'], url_path='add-image')
-    def add_image(self, request, pk=None):
-        project = self.get_object()
-        serializer = ProjectImagesSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save(project=project)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-# Project Detail
 class ProjectDetailView(generics.RetrieveAPIView):
     queryset = Projects.objects.all()
     serializer_class = ProjectSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
-# Similar Projects
 class SimilarProjectsView(APIView):
     def get(self, request, pk):
         try:
@@ -178,7 +189,6 @@ class SimilarProjectsView(APIView):
         except Projects.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
-# Create Comment
 class CommentCreateView(generics.CreateAPIView):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
@@ -193,7 +203,6 @@ class CommentCreateView(generics.CreateAPIView):
             parent=Comment.objects.get(pk=parent_id) if parent_id else None
         )
 
-# Create Rating
 class RatingCreateView(generics.CreateAPIView):
     queryset = Rating.objects.all()
     serializer_class = RatingSerializer
@@ -203,7 +212,6 @@ class RatingCreateView(generics.CreateAPIView):
         project_id = self.request.data.get('project_id')
         serializer.save(user=self.request.user, project=Projects.objects.get(pk=project_id))
 
-# Create Report
 class ReportCreateView(generics.CreateAPIView):
     queryset = Report.objects.all()
     serializer_class = ReportSerializer
@@ -218,7 +226,6 @@ class ReportCreateView(generics.CreateAPIView):
             comment=Comment.objects.get(pk=comment_id) if comment_id else None
         )
 
-# Create Donation
 class DonationCreateView(generics.CreateAPIView):
     queryset = Donation.objects.all()
     serializer_class = DonationSerializer
@@ -228,7 +235,6 @@ class DonationCreateView(generics.CreateAPIView):
         project_id = self.request.data.get('project_id')
         serializer.save(user=self.request.user, project=Projects.objects.get(pk=project_id))
 
-# Cancel Project
 class CancelProjectView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -236,13 +242,12 @@ class CancelProjectView(APIView):
         try:
             project = Projects.objects.get(pk=pk, uid=request.user)
             if project.can_cancel():
-                project.delete()
+                project.delete()  # بنحذف المشروع عشان is_active مش موجود
                 return Response({"message": "Project cancelled successfully"})
             return Response({"error": "Cannot cancel project"}, status=status.HTTP_400_BAD_REQUEST)
         except Projects.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
-
-# Render project template
+        
 def project_detail_template(request, pk):
     project = get_object_or_404(Projects, pk=pk)
     tags = project.tags.all()
@@ -251,24 +256,22 @@ def project_detail_template(request, pk):
         'project': project,
         'similar_projects': similar_projects
     })
-
 # Extra user info view
-class ExtraInfoView(APIView):
+class ExtraInfoMeView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        extra_info, _ = ExtraInfo.objects.get_or_create(user=request.user)
+        extra_info, created = ExtraInfo.objects.get_or_create(user=request.user)
         serializer = ExtraInfoSerializer(extra_info)
         return Response(serializer.data)
 
-    def post(self, request):
-        extra_info, _ = ExtraInfo.objects.get_or_create(user=request.user)
+    def put(self, request):
+        extra_info, created = ExtraInfo.objects.get_or_create(user=request.user)
         serializer = ExtraInfoSerializer(extra_info, data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 # Delete user account
 class DeleteUserView(APIView):
     permission_classes = [IsAuthenticated]
