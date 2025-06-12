@@ -1,4 +1,3 @@
-
 from django.urls import path,include
 from rest_framework.routers import DefaultRouter
 from .views import *
@@ -26,8 +25,3 @@ urlpatterns = [
     path('projects/<int:pk>/template/', project_detail_template, name='project-detail-template'),
 
 ]
-
-
-# # hossam.hassam.0.1.0.1.2@gmail.com
-#  # hossamkoky599
-

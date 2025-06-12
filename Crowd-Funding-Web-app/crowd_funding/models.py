@@ -103,6 +103,10 @@ class Projects(models.Model):
     def can_cancel(self):
         total_donations = sum(donation.amount for donation in self.donations.all())
         return total_donations < (self.totalTarget * 0.25)
+        
+    @property
+    def average_rating(self):
+        return self.ratings.aggregate(avg=models.Avg('score'))['avg'] or 0
 
 
 

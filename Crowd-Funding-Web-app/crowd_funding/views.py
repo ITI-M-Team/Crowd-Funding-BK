@@ -189,18 +189,30 @@ class SimilarProjectsView(APIView):
         except Projects.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
+
 class CommentCreateView(generics.CreateAPIView):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
-        project_id = self.request.data.get('project_id')
-        parent_id = self.request.data.get('parent_id')
+        parent_id = self.request.data.get('parent')
+        parent_comment = Comment.objects.filter(pk=parent_id).first() if parent_id else None
+
+        if parent_comment:
+            # Reply: use the project from the parent
+            project = parent_comment.project
+        else:
+            # Normal comment: get project from data
+            project_id = self.request.data.get('project')
+            if not project_id:
+                raise serializers.ValidationError("Project ID is required for top-level comments.")
+            project = Projects.objects.get(pk=project_id)
+
         serializer.save(
             user=self.request.user,
-            project=Projects.objects.get(pk=project_id),
-            parent=Comment.objects.get(pk=parent_id) if parent_id else None
+            project=project,
+            parent=parent_comment
         )
 
 class RatingCreateView(generics.CreateAPIView):

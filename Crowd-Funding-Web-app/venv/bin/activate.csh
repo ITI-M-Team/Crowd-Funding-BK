@@ -9,7 +9,7 @@ alias deactivate 'test $?_OLD_VIRTUAL_PATH != 0 && setenv PATH "$_OLD_VIRTUAL_PA
 # Unset irrelevant variables.
 deactivate nondestructive
 
-setenv VIRTUAL_ENV '/media/hossam-hassan/Data/ITI/FrameWork/Django/Project/Team-Project/githup main project/Crowd-Funding-Web-app/venv'
+setenv VIRTUAL_ENV '/mnt/my python/Django/Final_project/Crowd-Funding-BK/Crowd-Funding-Web-app/venv'
 
 set _OLD_VIRTUAL_PATH="$PATH"
 setenv PATH "$VIRTUAL_ENV/"bin":$PATH"

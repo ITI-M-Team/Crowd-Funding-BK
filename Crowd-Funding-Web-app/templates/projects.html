@@ -23,8 +23,6 @@
         </div>
         <p class="mt-4">{{ project.details }}</p>
         <p><strong>Category:</strong> {{ project.category.name|default:"No category" }}</p>
-        {% comment %} <p><strong>Target:</strong> {{ project.totalTarget }} EGP</p> {% endcomment %}
-        {% comment %} <p><strong>Raised:</strong> {{ project.donations.aggregate(total=models.Sum('amount')).total|default:0 }} EGP</p> {% endcomment %}
         <p><strong>Rating:</strong> {{ project.average_rating|floatformat:1 }} stars</p>
         <p><strong>Tags:</strong> {% for tag in project.tags.all %}{{ tag.name }}{% if not forloop.last %}, {% endif %}{% empty %}No tags{% endfor %}</p>
         <p><strong>Duration:</strong> {{ project.startTime|date:"M d, Y" }} to {{ project.endTime|date:"M d, Y" }}</p>
@@ -49,30 +47,36 @@
         {% endif %}
 
         <h2 class="text-2xl font-bold mt-8">Comments</h2>
-        <!-- {% for comment in project.comments.all %}
-            <div class="border p-4 mb-2">
-                <p><strong>{{ comment.user.email }}</strong> - {{ comment.created_at|date:"M d, Y" }}</p>
-                <p>{{ comment.content }}</p>
-                {% for reply in comment.replies.all %}
-                    <div class="ml-8 border-l-2 pl-4">
-                        <p><strong>{{ reply.user.email }}</strong> - {{ comment.created_at|date:"M d, Y" }}</p>
-                        <p>{{ reply.content }}</p>
-                    </div>
-                {% endfor %} -->
-                {% if user.is_authenticated %}
-                    <form action="{% url 'comment-create' %}" method="POST" class="mt-2">
-                        {% csrf_token %}
-                        <input type="hidden" name="project_id" value="{{ project.id }}">
-                        <input type="hidden" name="parent_id" value="{{ comment.id }}">
-                        <textarea name="content" class="border p-2 w-full" placeholder="Reply..."></textarea>
-                        <button type="submit" class="bg-blue-500 text-white px-4 py-2">Reply</button>
-                    </form>
-                    <a href="{% url 'report-create' %}?comment_id={{ comment.id }}" class="text-red-500">Report Comment</a>
-                {% endif %}
-            </div>
+        {% for comment in project.comments.all %}
+            {% if not comment.parent %}
+                <div class="border p-4 mb-2">
+                    <p><strong>{{ comment.user.email }}</strong> - {{ comment.created_at|date:"M d, Y" }}</p>
+                    <p>{{ comment.content }}</p>
+                    
+                    <!-- Replies -->
+                    {% for reply in comment.replies.all %}
+                        <div class="ml-8 border-l-2 pl-4 mt-2">
+                            <p><strong>{{ reply.user.email }}</strong> - {{ reply.created_at|date:"M d, Y" }}</p>
+                            <p>{{ reply.content }}</p>
+                        </div>
+                    {% endfor %}
+                    
+                    <!-- Reply Form -->
+                    {% if user.is_authenticated %}
+                        <form action="{% url 'comment-create' %}" method="POST" class="mt-2">
+                            {% csrf_token %}
+                            <input type="hidden" name="parent" value="{{ comment.id }}">
+                            <textarea name="content" class="border p-2 w-full" placeholder="Reply..."></textarea>
+                            <button type="submit" class="bg-blue-500 text-white px-4 py-2">Reply</button>
+                        </form>
+                        <a href="{% url 'report-create' %}?comment_id={{ comment.id }}" class="text-red-500">Report Comment</a>
+                    {% endif %}
+                </div>
+            {% endif %}
         {% empty %}
             <p>No comments yet.</p>
         {% endfor %}
+
         {% if user.is_authenticated %}
             <form action="{% url 'comment-create' %}" method="POST" class="mt-4">
                 {% csrf_token %}

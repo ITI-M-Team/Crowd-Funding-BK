@@ -1,5 +1,5 @@
 #!/bin/sh
-'''exec' "/media/hossam-hassan/Data/ITI/FrameWork/Django/Project/Team-Project/githup main project/Crowd-Funding-Web-app/venv/bin/python3" "$0" "$@"
+'''exec' "/mnt/my python/Django/Final_project/Crowd-Funding-BK/Crowd-Funding-Web-app/venv/bin/python3" "$0" "$@"
 ' '''
 # -*- coding: utf-8 -*-
 import re

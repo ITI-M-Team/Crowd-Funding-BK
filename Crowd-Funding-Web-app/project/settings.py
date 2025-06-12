@@ -37,6 +37,7 @@ INSTALLED_APPS = [
 
     # Local apps
     'crowd_funding',
+    
 ]
 
 # Middleware
@@ -51,6 +52,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
 ]
+CORS_ALLOW_ALL_ORIGINS = True
 
 ROOT_URLCONF = 'project.urls'
 

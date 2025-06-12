@@ -1,4 +1,3 @@
-from requests import Response
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import make_password
@@ -214,4 +213,3 @@ class RatingSerializer(serializers.ModelSerializer):
         for image in images:
             ProjectImages.objects.create(project=project, image=image) 
         return project
-## (add Project and list all projects)
