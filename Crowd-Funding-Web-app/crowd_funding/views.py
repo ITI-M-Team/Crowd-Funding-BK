@@ -11,6 +11,9 @@ from django.conf import settings
 from django.contrib.auth import login
 from .models import User, EmailActivation, PasswordReset, Projects, Comment, Rating, Report, Donation
 from .serializers import *
+from django.db.models import Avg, Value, FloatField
+from django.utils.timezone import now
+from django.db.models.functions import Coalesce
 
 import uuid
 ### Try With Unautheticated
@@ -311,20 +314,26 @@ class ProfileView(APIView):
         user = request.user
         serializer = UserProfileSerializer(user)
         return Response(serializer.data)
-
+    
 
 @api_view(['GET'])
 def home_projects(request):
-    latest_projects = Projects.objects.filter( is_canceled=False).order_by('-created_at')[:5]
-    featured_projects = Projects.objects.filter(is_canceled=False, is_featured=True).order_by('-created_at')[:5]
+    current_time = now()
+    base_qs = Projects.objects.filter(is_canceled=False)
 
-    latest_serializer = ProjectSerializer(latest_projects, many=True, context={'request': request})
-    featured_serializer = ProjectSerializer(featured_projects, many=True, context={'request': request})
+    latest_projects = base_qs.order_by('-created_at') \
+        .annotate(avg_rating=Coalesce(Avg('ratings__score'), Value(0, output_field=FloatField())))[:5]
+
+    featured_projects = base_qs.filter(is_featured=True).order_by('-created_at') \
+        .annotate(avg_rating=Coalesce(Avg('ratings__score'), Value(0, output_field=FloatField())))[:5]
+
+    top_rated_projects = base_qs.annotate(
+    avg_rating=Coalesce(Avg('ratings__score'), Value(0, output_field=FloatField()))
+    ).order_by('-avg_rating')[:5]
+   
 
     return Response({
-        "latest_projects": latest_serializer.data,
-        "featured_projects": featured_serializer.data
+        "latest_projects": ProjectSerializer(latest_projects, many=True, context={'request': request}).data,
+        "featured_projects": ProjectSerializer(featured_projects, many=True, context={'request': request}).data,
+        "top_rated_projects": ProjectSerializer(top_rated_projects, many=True, context={'request': request}).data,
     })
-
-
-

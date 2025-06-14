@@ -115,10 +115,10 @@ class ProjectSerializer(serializers.ModelSerializer):
     category = serializers.CharField()  
     tags = TagSerializer(many=True, read_only=True) 
     images = ProjectImagesSerializer(many=True, read_only=True)
-
+    avg_rating = serializers.FloatField(read_only=True, default=0)
     class Meta:
         model = Projects
-        fields = ['id', 'title', 'details', 'totalTarget', 'startTime', 'endTime', 'uid', 'category', 'tags', 'images']
+        fields = ['id', 'title', 'details', 'totalTarget', 'startTime', 'endTime', 'uid', 'category', 'tags', 'images','avg_rating']
         extra_kwargs = {
             'uid': {'read_only': True}
         }
@@ -147,6 +147,9 @@ class ProjectSerializer(serializers.ModelSerializer):
             for image in images:
                 ProjectImages.objects.create(project=project, image=image)
         return project
+    def to_internal_value(self, data):
+        print("Incoming data to ProjectSerializer:", data)
+        return super().to_internal_value(data)
     ##log errors
     def to_internal_value(self, data):
         print("Incoming data to ProjectSerializer:", data)
@@ -277,17 +280,17 @@ class UpdateUserProfileSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
-    def create(self,validated_data):
-        ##get the incoming ctargory and tags from FR
-        category = validated_data.pop('category')
-        tags = validated_data.pop('tags')
-        ## Use Get or create DRF BIN
-        newcategory, _ = Category.objects.get_or_create(name=category['name'])
-        ## Same as tags but it sore as list
-        newtags = []
-        for tag in tags:
-            newtag,_=Tag.objects.get_or_create(name=tag['name'])
-            newtags.append(newtag)
-        project=Projects.objects.create(category=newcategory,**validated_data)
-        project.tags.set(newtags)
-        return project
+    # def create(self,validated_data):
+    #     ##get the incoming ctargory and tags from FR
+    #     category = validated_data.pop('category')
+    #     tags = validated_data.pop('tags')
+    #     ## Use Get or create DRF BIN
+    #     newcategory, _ = Category.objects.get_or_create(name=category['name'])
+    #     ## Same as tags but it sore as list
+    #     newtags = []
+    #     for tag in tags:
+    #         newtag,_=Tag.objects.get_or_create(name=tag['name'])
+    #         newtags.append(newtag)
+    #     project=Projects.objects.create(category=newcategory,**validated_data)
+    #     project.tags.set(newtags)
+    #     return project
