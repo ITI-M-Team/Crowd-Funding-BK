@@ -95,6 +95,10 @@ class Projects(models.Model):
     uid=models.ForeignKey('User',on_delete=models.CASCADE) # naming creator would be better
     category=models.ForeignKey('Category',on_delete=models.SET_NULL,null=True)
     tags=models.ManyToManyField('Tag',blank=True)
+    is_featured = models.BooleanField(default=False)
+    is_approved = models.BooleanField(default=False)  
+    is_canceled = models.BooleanField(default=False)  
+    created_at = models.DateTimeField(auto_now_add=True)
 
 
 ##########################NOTE
