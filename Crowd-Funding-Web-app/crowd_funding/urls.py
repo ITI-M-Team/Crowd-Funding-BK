@@ -28,6 +28,8 @@ urlpatterns = [
     path('extra-info/', ExtraInfoMeView.as_view(), name='extra-info-me'), 
     path('delete-account/', DeleteUserView.as_view(), name='delete-account'),
     path('update-profile/', UpdateUserProfileView.as_view(), name='update-profile'),
+    path('home-projects/', home_projects, name='home-projects'),
+
     path('profile/', ProfileView.as_view(), name='profile'),
 
 
