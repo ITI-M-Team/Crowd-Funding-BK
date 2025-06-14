@@ -117,10 +117,12 @@ class ProjectSerializer(serializers.ModelSerializer):
     category = serializers.CharField()  
     tags = TagSerializer(many=True, read_only=True) 
     images = ProjectImagesSerializer(many=True, read_only=True)
+    avg_rating = serializers.FloatField(read_only=True, default=0)
+
 
     class Meta:
         model = Projects
-        fields = ['id', 'title', 'details', 'totalTarget', 'startTime', 'endTime', 'uid', 'category', 'tags', 'images']
+        fields = ['id', 'title', 'details', 'totalTarget', 'startTime', 'endTime', 'uid', 'category', 'tags', 'images','avg_rating']
         extra_kwargs = {
             'uid': {'read_only': True}
         }
