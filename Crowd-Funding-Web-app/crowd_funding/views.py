@@ -1,20 +1,20 @@
 from rest_framework.authtoken.models import Token
-from rest_framework.decorators import action ,api_view
-from rest_framework import generics, status, views, viewsets, permissions
+from rest_framework.decorators import action, api_view
+from rest_framework import generics, status, views, viewsets, permissions, filters
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.exceptions import ValidationError
+
 from django.utils import timezone
 from django.core.mail import send_mail
-from django.shortcuts import render ,get_object_or_404
+from django.shortcuts import render, get_object_or_404
 from django.conf import settings
 from django.contrib.auth import login
-from .models import User, EmailActivation, PasswordReset, Projects, Comment, Rating, Report, Donation
+
+from .models import User, EmailActivation, PasswordReset, Projects, Comment, Rating, Report, Donation, ExtraInfo
 from .serializers import *
 
-
-
-from rest_framework import filters
 
 import uuid
 ### Try With Unautheticated
@@ -336,11 +336,17 @@ def home_projects(request):
 
 # search by using tags and id
 class ProjectSearchView(generics.ListAPIView):
-    queryset = Projects.objects.prefetch_related("tags", "images").all()
     serializer_class = ProjectSerializer
-    
     filter_backends = [filters.SearchFilter]
     search_fields = ['title', 'tags__name']
+
+    def get_queryset(self):
+        search_query = self.request.query_params.get('search', '').strip()
+
+        if not search_query:
+            raise ValidationError({"detail": "Search term is required."})
+
+        return Projects.objects.prefetch_related("tags", "images").all()
 
     def get_serializer_context(self):
         return {'request': self.request}
